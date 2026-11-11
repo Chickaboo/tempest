@@ -61,6 +61,11 @@ impl Form {
         self.grid.iter().take_while(|unit| t % *unit == 0).count()
     }
 
+    /// The longest metric unit that begins at `t`.
+    pub fn stride(&self, t: Time) -> Time {
+        self.grid[self.weight(t) - 1]
+    }
+
     /// The strongest beats strictly inside a span: where it naturally divides.
     pub fn cuts(&self, lo: Time, hi: Time) -> Vec<Time> {
         let inside = |unit: &Time| ((lo / unit + 1) * unit..hi).step_by(*unit as usize).collect::<Vec<_>>();

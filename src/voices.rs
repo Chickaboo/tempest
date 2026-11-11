@@ -2,8 +2,8 @@
 //! does this span move, and what leads from here to there?
 
 use crate::form::{mix, unit, Form, Time};
-use crate::tonal::{consonant, flow, Chord};
-use crate::unfold::{Point, Voice};
+use crate::tonal::{consonant, fifths, flow, relative, Chord};
+use crate::unfold::{unfold, Point, Voice};
 
 /// A span of time in quarter notes, the scale on which the voices feel duration.
 fn quarters(span: Time) -> f64 {
@@ -27,6 +27,23 @@ pub struct Harmony<'a> {
     pub home: i32,
 }
 
+impl Harmony<'_> {
+    const GRAVITY: f64 = 0.3; // the appeal a chord keeps, per fifth from the centre, at the head of a section
+
+    /// The chords of the piece, unfolded from the tonic back to the tonic.
+    /// A chord arriving at the head of a phrase is led into by a true dominant.
+    pub fn chords(&self) -> Vec<Chord> {
+        let (form, mut roots) = (self.form, vec![]);
+        unfold(self, form, (0, self.home), (form.end(), self.home), &mut roots);
+        roots.push((form.end(), form.end() + form.bar(), self.home));
+        let chord = |i: usize| match roots.get(i + 1) {
+            Some(&(t, _, next)) if form.stride(t) > 2 * form.bar() => Chord::leading_into(roots[i].2, next),
+            _ => Chord { root: roots[i].2, leading: false },
+        };
+        (0..roots.len()).map(chord).collect()
+    }
+}
+
 impl Voice for Harmony<'_> {
     type Tone = i32;
 
@@ -34,18 +51,19 @@ impl Voice for Harmony<'_> {
         hi - lo > self.form.bar()
     }
 
-    /// Sections open on their tonic — the contrasting one on the relative key's.
-    /// Every other chord is drawn along by its neighbours, the nearer the stronger —
-    /// and by where it is going more than by where it has been.
+    /// A chord is drawn along by its neighbours, the nearer the stronger, and by
+    /// where it is going more than by where it has been. The longer the span it
+    /// opens, the harder it is pulled towards the centre of its section — the
+    /// contrasting section's being the relative key.
     fn lead(&self, (lo, a): Point<i32>, t: Time, (hi, b): Point<i32>) -> i32 {
         let form = self.form;
-        if t % form.spans[1] == 0 {
-            return if form.role(t, 1) == 1 { 5 - self.home } else { self.home };
-        }
+        let centre = if form.role(t, 1) == 1 { relative(self.home) } else { self.home };
+        let weight = (form.stride(t) as f64 / form.spans[1] as f64).powi(2);
         let pull = |from, to, distance: Time| flow(from, to).powf((form.bar() as f64 / distance as f64).powi(2));
         let appeal = |x: i32| {
             let whim = 0.5 + 0.5 * form.whim(lo, hi, t, 0x300 + x as u64);
-            pull(a, x, t - lo).sqrt() * pull(x, b, hi - t) * if consonant(x) { whim } else { 0.3 * whim }
+            let gravity = Self::GRAVITY.powf(fifths(x, centre) as f64 * weight);
+            pull(a, x, t - lo).sqrt() * pull(x, b, hi - t) * gravity * if consonant(x) { whim } else { 0.3 * whim }
         };
         (0..7).max_by(|&x, &y| appeal(x).total_cmp(&appeal(y))).unwrap()
     }

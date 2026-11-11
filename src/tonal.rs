@@ -25,8 +25,20 @@ pub fn consonant(root: i32) -> bool {
     interval(root, 4) == 7
 }
 
+/// The centre of the relative key: the same collection, heard from its other tonic.
+pub fn relative(centre: i32) -> i32 {
+    5 - centre
+}
+
+/// How many fifths apart two roots lie on the line of fifths that orders the collection.
+pub fn fifths(from: i32, to: i32) -> i32 {
+    let place = |root: i32| (2 * root + 1).rem_euclid(7);
+    (place(from) - place(to)).abs()
+}
+
 /// How strongly one root wants to move to another, by the interval it rises:
 /// falling a fifth is the engine of tonal harmony; standing still is no motion at all.
+/// This is the algorithm's one table of taste.
 pub fn flow(from: i32, to: i32) -> f64 {
     [0.2, 0.5, 0.1, 1.0, 0.35, 0.35, 0.15][(to - from).rem_euclid(7) as usize]
 }
