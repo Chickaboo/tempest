@@ -3,7 +3,7 @@
 
 use crate::form::{mix, unit, Form, Time};
 use crate::tonal::{consonant, fifths, flow, relative, Chord, Chords};
-use crate::unfold::{unfold, Point, Voice};
+use crate::unfold::{tie, unfold, Point, Voice};
 
 /// A span of time in quarter notes, the scale on which the voices feel duration.
 fn quarters(span: Time) -> f64 {
@@ -28,6 +28,7 @@ pub struct Harmony<'a> {
 }
 
 impl Harmony<'_> {
+    const DENSITY: (f64, f64) = (0.0, 0.08);
     const GRAVITY: f64 = 0.3; // the appeal a chord keeps, per fifth from the centre, at the head of a section
 
     /// The chords of the piece, unfolded from the tonic back to the tonic.
@@ -35,6 +36,7 @@ impl Harmony<'_> {
     pub fn chords(&self) -> Chords {
         let (form, mut roots) = (self.form, vec![]);
         unfold(self, form, (0, self.home), (form.end(), self.home), &mut roots);
+        let mut roots = tie(roots, |t| t % form.bar() == 0);
         roots.push((form.end(), form.end() + form.bar(), self.home));
         let chord = |i: usize| match roots.get(i + 1) {
             Some(&(t, _, next)) if form.stride(t) > 2 * form.bar() => Chord::leading_into(roots[i].2, next),
@@ -47,8 +49,10 @@ impl Harmony<'_> {
 impl Voice for Harmony<'_> {
     type Tone = i32;
 
+    /// Every bar has its chord; within the bar the harmony quickens with the energy.
     fn moves(&self, lo: Time, hi: Time, _: i32) -> bool {
-        hi - lo > self.form.bar()
+        let form = self.form;
+        hi - lo > form.bar() || form.whim(lo, hi, lo, 0x380 + (hi - lo) as u64) < density(form, lo, hi, Self::DENSITY)
     }
 
     /// A chord is drawn along by its neighbours, the nearer the stronger, and by
@@ -106,7 +110,8 @@ impl Voice for Melody<'_> {
 
     /// The tone nearest a point on the path between its neighbours — a path that rises
     /// where the energy swells, and strays by a whim that belongs to the motif.
-    /// A tone outside the chord is welcome only if brief, and only if it resolves by step.
+    /// A tone outside the chord is welcome only if brief, and only if it resolves by step
+    /// before the harmony moves on.
     fn lead(&self, (lo, a): Point<i32>, t: Time, (hi, b): Point<i32>) -> i32 {
         let (form, at) = (self.form, (lo, t, hi));
         let swell = form.energy(t) - between(form.energy(lo), form.energy(hi), at);
@@ -116,7 +121,7 @@ impl Voice for Melody<'_> {
         let cost = |x: i32| {
             let tension = match (self.chords.at(t).1.contains(x), (x - b).abs()) {
                 (true, _) => 0.0,
-                (false, 1) => Self::TENSION * quarters(hi - t),
+                (false, 1) if !self.chords.changes(t, hi) => Self::TENSION * quarters(hi - t),
                 (false, _) => f64::INFINITY,
             };
             let stale = if x == a || x == b { Self::STALE } else { 0.0 };
