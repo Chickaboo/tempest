@@ -94,10 +94,13 @@ impl Form {
         unit(mix(mix(self.idea(lo, depth), (t % self.spans[depth]) as u64), salt))
     }
 
-    /// A swell that crests two-thirds of the way through the piece, through each
-    /// section, and through each phrase: the shape of a breath, at three scales.
+    /// A swell that rises and falls through the piece, through each section and
+    /// through each phrase: the shape of a breath, at three scales. Where it crests,
+    /// and how much the whole outweighs its parts, is the piece's own.
     pub fn energy(&self, t: Time) -> f64 {
-        let arch = |span: &Time| (PI * ((t % span) as f64 / *span as f64).powf(1.5)).sin();
-        [0.5, 0.3, 0.2].iter().zip(&self.spans).map(|(share, span)| share * arch(span)).sum()
+        let (crest, whole) = (1.0 + unit(mix(self.seed, 5)), 0.4 + 0.2 * unit(mix(self.seed, 6)));
+        let arch = |span: &Time| (PI * ((t % span) as f64 / *span as f64).powf(crest)).sin();
+        let shares = [whole, 0.6 * (1.0 - whole), 0.4 * (1.0 - whole)];
+        shares.iter().zip(&self.spans).map(|(share, span)| share * arch(span)).sum()
     }
 }
