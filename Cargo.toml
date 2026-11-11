@@ -1,0 +1,11 @@
+[package]
+name = "tempest"
+version = "0.1.0"
+edition = "2021"
+description = "Solo piano music unfolded from a single seed: one recursive function, no machine learning"
+license = "GPL-3.0-or-later"
+readme = "README.md"
+keywords = ["music", "midi", "generative", "composition", "piano"]
+categories = ["multimedia::audio", "command-line-utilities"]
+
+[dependencies]
