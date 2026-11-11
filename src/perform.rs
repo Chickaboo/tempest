@@ -22,7 +22,7 @@ pub fn perform(piece: &Piece) -> Vec<Track> {
     let (mut right, mut left) = (Track::named("Right hand"), Track::named("Left hand"));
     for note in &piece.notes {
         let energy = form.energy(note.start);
-        let accent = form.weight(note.start).min(form.weight(form.bar())) as f64;
+        let accent = (form.stride(note.start).min(form.bar()) as f64).log2();
         let touch = 6.0 * unit(mix(form.seed, (note.start * 128 + note.pitch) as u64)) - 3.0;
         let (track, velocity) = match note.hand {
             Hand::Right => (&mut right, 44.0 + 44.0 * energy + 2.5 * accent + 0.25 * (note.pitch - 60) as f64),

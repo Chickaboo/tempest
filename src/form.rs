@@ -6,6 +6,9 @@ use std::f64::consts::PI;
 /// Musical time, counted in eighth notes.
 pub type Time = i32;
 
+/// A piece gathers its bars into ideas, and those into larger ideas, until it lasts this long.
+const LENGTH: Time = 150;
+
 /// SplitMix64: a stateless hash, and the piece's only source of chance.
 pub fn mix(seed: u64, salt: u64) -> u64 {
     let mut z = seed ^ salt.wrapping_add(1).wrapping_mul(0x9E37_79B9_7F4A_7C15);
@@ -55,7 +58,8 @@ impl Form {
         let mut form = Form { seed, spans: vec![1], shapes: vec![], grid: vec![1] };
         meter.iter().rev().for_each(|n| form.grow(*n));
         form.spans = vec![form.end()];
-        for depth in 0..3 {
+        while form.end() < LENGTH {
+            let depth = form.shapes.len() as u64;
             let parts = 2 + (mix(seed, 7 + depth) % 3) as Time;
             let mut frame = Form { seed, spans: vec![], shapes: vec![], grid: vec![1] };
             frame.grow(parts);
@@ -87,14 +91,9 @@ impl Form {
         self.grid[self.grid.len() - 1]
     }
 
-    /// How many levels of the metric hierarchy `t` is a downbeat of.
-    pub fn weight(&self, t: Time) -> usize {
-        self.grid.iter().take_while(|unit| t % *unit == 0).count()
-    }
-
-    /// The longest metric unit that begins at `t`.
+    /// The longest metric unit that begins at `t`: how strong a beat it is.
     pub fn stride(&self, t: Time) -> Time {
-        self.grid[self.weight(t) - 1]
+        *self.grid.iter().rev().find(|unit| t % *unit == 0).unwrap()
     }
 
     /// The strongest beats strictly inside a span: where it naturally divides.
