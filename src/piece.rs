@@ -1,4 +1,4 @@
-//! A piece: one seed, unfolded three times.
+//! A piece: one seed, unfolded voice by voice.
 
 use crate::form::{mix, unit, Form, Time};
 use crate::tonal::{degree_near, Chords};
