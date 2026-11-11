@@ -94,7 +94,7 @@ impl Melody<'_> {
     const DENSITY: (f64, f64) = (0.2, 0.5); // how readily a span divides: at rest, and per unit of energy
     const WANDER: f64 = 1.3; //                how far, in degrees, a tone may stray from its path
     const LIFT: f64 = 5.0; //                  how far, in degrees, energy raises the line
-    const SPRING: f64 = 0.04; //               the pull back towards the register, per degree squared
+    const SPRING: f64 = 0.06; //               the pull back towards the register, per degree squared
     const TENSION: f64 = 0.8; //               the cost of a dissonance, per quarter note it lasts
     const STALE: f64 = 0.4; //                 the cost of repeating a neighbouring tone
 
@@ -126,7 +126,7 @@ impl Voice for Melody<'_> {
         let swell = form.energy(t) - between(form.energy(lo), form.energy(hi), at);
         let stray = Self::WANDER * quarters(hi - lo).powf(0.25) * (2.0 * form.whim(lo, hi, t, 0x100) - 1.0);
         let goal = between(a as f64, b as f64, at) + Self::LIFT * swell + stray;
-        let home = self.register as f64 + Self::LIFT * form.energy(t);
+        let home = self.register as f64 + Self::LIFT * form.energy(t).max(0.0);
         let cost = |x: i32| {
             let tension = match (self.chords.at(t).1.contains(x), (x - b).abs()) {
                 (true, _) => 0.0,
@@ -152,7 +152,7 @@ pub struct Bass<'a> {
 
 impl Bass<'_> {
     pub const LADDER: [i32; 5] = [0, 4, 9, 11, 14]; // root, fifth, tenth, twelfth, fifteenth
-    const DENSITY: (f64, f64) = (0.45, 0.5);
+    const DENSITY: (f64, f64) = (0.3, 0.8);
     const REACH: f64 = 2.6; // how many rungs the figure climbs in half a bar
     const STALE: f64 = 0.8; // the cost of repeating a neighbouring rung
 

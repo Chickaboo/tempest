@@ -31,7 +31,7 @@ pub fn perform(piece: &Piece) -> Vec<Track> {
         // The final chord is rolled from the bottom up, and held.
         let (start, stop) = (note.start as u32 * EIGHTH, note.end as u32 * EIGHTH - 10);
         let (start, stop) = if note.start as u32 == end { (start + 5 * (note.pitch as u32 - 21), fermata) } else { (start, stop) };
-        track.note(start, stop, note.pitch as u8, (velocity + touch).clamp(1.0, 127.0) as u8);
+        track.note(start, stop, note.pitch as u8, (velocity + touch).clamp(24.0, 127.0) as u8);
     }
 
     // The pedal is changed with every chord, and held under the last.

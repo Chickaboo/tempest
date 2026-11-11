@@ -135,13 +135,20 @@ impl Form {
         unit(mix(mix(self.idea(lo, depth), (t % self.spans[depth]) as u64), salt))
     }
 
+    /// A trait of the piece's character: a number between `low` and `high` that belongs to its seed.
+    pub fn temper(&self, salt: u64, low: f64, high: f64) -> f64 {
+        low + (high - low) * unit(mix(self.seed, salt))
+    }
+
     /// A swell that rises and falls through the piece, through each section and
     /// through each phrase: the shape of a breath, at three scales. Where it crests,
-    /// and how much the whole outweighs its parts, is the piece's own.
+    /// how much the whole outweighs its parts, the level it rises from and how far
+    /// it rises are the piece's own — a still piece and a stormy one differ only here.
     pub fn energy(&self, t: Time) -> f64 {
-        let (crest, whole) = (1.0 + unit(mix(self.seed, 5)), 0.4 + 0.2 * unit(mix(self.seed, 6)));
+        let (crest, whole) = (self.temper(5, 1.0, 2.0), self.temper(6, 0.4, 0.6));
+        let (tide, swell) = (self.temper(30, -0.6, 0.3), self.temper(31, 0.5, 1.1));
         let arch = |span: &Time| (PI * ((t % span) as f64 / *span as f64).powf(crest)).sin();
         let shares = [whole, 0.6 * (1.0 - whole), 0.4 * (1.0 - whole)];
-        shares.iter().zip(&self.spans).map(|(share, span)| share * arch(span)).sum()
+        tide + swell * shares.iter().zip(&self.spans).map(|(share, span)| share * arch(span)).sum::<f64>()
     }
 }

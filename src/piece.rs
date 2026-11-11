@@ -1,6 +1,6 @@
 //! A piece: one seed, unfolded voice by voice.
 
-use crate::form::{mix, unit, Form, Time};
+use crate::form::{mix, Form, Time};
 use crate::tonal::{degree_near, Chords};
 use crate::unfold::{tie, unfold, Span};
 use crate::voices::{Bass, Harmony, Melody};
@@ -35,9 +35,9 @@ pub struct Piece {
 pub fn compose(seed: u64) -> Piece {
     let choose = |salt, n| (mix(seed, salt) % n) as usize;
     let (key, home) = (choose(2, 12) as i32, [0, 5][choose(3, 2)]);
-    let pace = 112.0 + 48.0 * unit(mix(seed, 4));
 
     let form = Form::new(seed);
+    let pace = form.temper(4, 112.0, 160.0);
     let (bar, end) = (form.bar(), form.end());
     let close = end + bar;
 
@@ -126,7 +126,7 @@ mod tests {
     #[test]
     fn the_music_keeps_its_promises() {
         let (mut cadences, mut steps, mut leaps, mut crossings, mut accompaniment) = (0, 0, 0, 0, 0);
-        let (mut centred, mut sections, mut lengths) = (0, 0, HashSet::new());
+        let (mut centred, mut sections, mut lengths, mut busiest, mut stillest) = (0, 0, HashSet::new(), 0.0f64, 9.0f64);
         for piece in pieces() {
             let (form, harmony) = (&piece.form, Harmony { form: &piece.form, home: piece.home });
             lengths.insert(form.end() / form.bar());
@@ -137,6 +137,8 @@ mod tests {
             let penultimate = piece.chords.at(piece.form.end() - 1).1;
             cadences += (penultimate.root == (piece.home + 4) % 7 && penultimate.quality().is_empty()) as usize;
             let line = melody(&piece);
+            let busyness = line.len() as f64 / form.end() as f64;
+            (busiest, stillest) = (busiest.max(busyness), stillest.min(busyness));
             for pair in line.windows(2) {
                 let step = (pair[1].pitch - pair[0].pitch).abs() <= 2;
                 steps += step as usize;
@@ -152,6 +154,7 @@ mod tests {
         let share = |part: usize, whole: usize| part as f64 / whole as f64;
         let measured = (share(cadences, 200), share(steps, steps + leaps), share(crossings, accompaniment), share(centred, sections));
         println!("cadences {:.3}  steps {:.3}  crossings {:.4}  centred {:.3}  lengths {}", measured.0, measured.1, measured.2, measured.3, lengths.len());
+        println!("melody notes per eighth: stillest {stillest:.3}  busiest {busiest:.3}");
         assert!(share(cadences, 200) >= 0.9, "pieces should end dominant to tonic");
         assert!(share(steps, steps + leaps) >= 0.5, "the melody should mostly move by step");
         assert!(share(centred, sections) >= 0.95, "sections should open on their tonal centre");
