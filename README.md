@@ -36,11 +36,11 @@ There is no random number generator, only a hash. Every choice depends on which 
 
 ### One curve of energy
 
-A single swell rises and falls across the piece, across each section and across each phrase. It decides how busy the music is, how high the melody sits, and how loud and fast it is played. When an idea returns at higher energy it comes back with more notes in it.
+A single swell rises and falls across the piece, across each section and across each phrase. It decides how busy the music is, how quickly the chords change, how high the melody sits, and how loud and fast it is played. When an idea returns at higher energy it comes back with more notes in it. Where the swell crests is different for every seed, so each piece has its own arc.
 
 ### Tension must resolve
 
-A melody note outside the chord is only allowed if it steps into the next note, and it cannot be decorated before it does. Passing notes and appoggiaturas come out of that one condition. Harmony follows the pull of falling fifths, strongest toward the chord it is about to reach, so cadences appear on their own.
+A melody note outside the chord is only allowed if it steps into the next note, and it cannot be decorated before it does. Passing notes and appoggiaturas come out of that one condition. Harmony follows the pull of falling fifths, strongest toward the chord it is about to reach, so cadences appear on their own. The longer the span a chord opens, the harder it is pulled toward the key's centre, so sections find their tonic without being told to.
 
 ## Project layout
 

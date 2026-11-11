@@ -12,13 +12,13 @@ The algorithm is the whole point. It should be elegant at its core, built on a s
 
 A piece is a single cadence, tonic to tonic, unfolded. One function, `unfold` in `src/unfold.rs`, takes a span of time, the tone it starts on and the tone it is bound for. It either holds the tone, or cuts the span at its strongest beat, chooses a tone there that leads into what follows, and recurses. Tones are chosen last first, so every note is written knowing where it is going.
 
-That function runs once per voice. A voice (`src/voices.rs`) answers two questions: does this span move, and what leads from here to there. Harmony, melody and accompaniment are three answers.
+That function runs once per voice. Harmony goes first; the other two answer its chords, not the barlines. A voice (`src/voices.rs`) answers two questions: does this span move, and what leads from here to there. Harmony, melody and accompaniment are three answers.
 
 Four ideas make it music:
 
 - Metre is the recursion tree. `Form::cuts` splits a span at its strongest beat, so a tone's metric weight is its structural importance.
 - Identity is a seed. `Form::whim` is a hash of which idea a choice belongs to and where in it. Ideas are arranged as statement, echo, contrast, return, so a returning idea brings its choices back with it.
-- One curve of energy. `Form::energy` drives how readily spans divide, how high the melody sits, and how loud and fast the piece is played.
+- One curve of energy. `Form::energy` drives how readily spans divide in every voice, harmony included, how high the melody sits, and how loud and fast the piece is played. Its shape comes from the seed.
 - Tension must resolve. A melody tone outside the chord is allowed only if it steps into the next tone, and it cannot be elaborated first.
 
 ## How to tell whether a change belongs
@@ -29,7 +29,7 @@ Ask these in order. A change that fails one needs a different design, not an exc
 - Is it one law for all voices? A case per voice, or a case per metre, is a sign the law is missing.
 - Does it add a table of patterns, a template, or a list of special situations? Then it does not belong. The only table of taste is `tonal::flow`, and it is labelled as one.
 - Does `unfold` stay as it is? It should.
-- Is the code smaller or the same size afterwards? Delete before adding. The composition code (`form`, `tonal`, `unfold`, `voices`, `compose`) is about 320 lines and should stay near that.
+- Is the code smaller or the same size afterwards? Delete before adding. The composition code (`form`, `tonal`, `unfold`, `voices`, `compose`) is about 350 lines and should stay near that.
 - Is the piece still a pure function of its seed? No random number generator, no clock, no state.
 - No dependencies.
 
@@ -51,6 +51,8 @@ These are known and deliberate for now. Do not bolt them on.
 - The form is always statement, echo, contrast, return, 32 bars. Other shapes would need a table of shapes.
 - Triads in root position only. Nothing faster than an eighth note. No ornaments.
 - The contrast section moves to the relative key, which shares the home key's notes. There is no true modulation.
+- The melody never rests. The pedal clears with every chord, so the only audible rest is a melody that does not strike at a chord's start. Withholding that tone leaves any dissonance before it unresolved, which breaks the fourth idea; a version that checks for this is a pile of conditions. It needs a better idea, not a patch.
+- The voice salts in `src/voices.rs` (`0x100`, `0x300`, `0x380`) are bare numbers. They only need to differ.
 
 ## House conventions
 
