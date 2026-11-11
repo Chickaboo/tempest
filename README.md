@@ -60,6 +60,10 @@ cargo test
 
 The tests compose 200 pieces and check what the design promises: every dissonance resolves by step, every bar stands on its root, and every piece ends where it began.
 
+## Tools
+
+<img src="https://skillicons.dev/icons?i=rust&theme=dark" alt="Rust" />
+
 ## License
 
 Tempest is free software, released under the [GPL-3.0](LICENSE).
