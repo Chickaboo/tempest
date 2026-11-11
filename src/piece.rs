@@ -1,6 +1,6 @@
 //! A piece: one seed, unfolded voice by voice.
 
-use crate::form::{mix, Form, Time};
+use crate::form::{mix, temper, Form, Time};
 use crate::tonal::{degree_near, Chords};
 use crate::unfold::{tie, unfold, Span};
 use crate::voices::{Bass, Harmony, Melody};
@@ -37,7 +37,7 @@ pub fn compose(seed: u64) -> Piece {
     let (key, home) = (choose(2, 12) as i32, [0, 5][choose(3, 2)]);
 
     let form = Form::new(seed);
-    let pace = form.temper(4, 112.0, 160.0);
+    let pace = temper(seed, 4, 112.0, 160.0);
     let (bar, end) = (form.bar(), form.end());
     let close = end + bar;
 
@@ -165,5 +165,6 @@ mod tests {
         assert!(share(centred, sections) >= 0.95, "sections should open on their tonal centre");
         assert!(share(crossings, accompaniment) < 0.02, "the left hand should stay under the melody");
         assert!(lengths.len() >= 5, "pieces should differ in form");
+        assert!(busiest >= 4.0 * stillest, "pieces should differ in character");
     }
 }

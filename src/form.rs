@@ -25,6 +25,11 @@ pub fn unit(seed: u64) -> f64 {
     (seed >> 11) as f64 / (1u64 << 53) as f64
 }
 
+/// A trait of a piece: a number between `low` and `high` that belongs to its seed.
+pub fn temper(seed: u64, salt: u64, low: f64, high: f64) -> f64 {
+    low + (high - low) * unit(mix(seed, salt))
+}
+
 /// The shape of an idea, unfolded like everything else. It opens with a statement
 /// and a statement follows it; each part between two others says something new —
 /// most likely where its neighbours are alike — or echoes one of them, more
@@ -53,13 +58,19 @@ pub struct Form {
     pub shapes: Vec<Vec<u64>>,
     /// Every metric unit, finest to coarsest: eighth, beat, …, bar, …, piece.
     grid: Vec<Time>,
+    /// The piece's character: the level its energy rises from, how far it rises,
+    /// and how much chance is allowed to matter against the pulls.
+    pub tide: f64,
+    pub swell: f64,
+    pub caprice: f64,
 }
 
 impl Form {
     /// One hierarchy of time, every level gathering a few of the level below:
     /// eighths into beats and beats into a bar, then bars into ideas and ideas into the piece.
     pub fn new(seed: u64) -> Self {
-        let mut form = Form { seed, spans: vec![], shapes: vec![], grid: vec![1] };
+        let (tide, swell, caprice) = (temper(seed, 30, -0.6, 0.3), temper(seed, 31, 0.5, 1.1), temper(seed, 32, 0.5, 1.5));
+        let mut form = Form { seed, spans: vec![], shapes: vec![], grid: vec![1], tide, swell, caprice };
         while form.end() < BAR {
             form.grow(2 + (mix(seed, 20 + form.grid.len() as u64) % 2) as Time);
         }
@@ -67,7 +78,7 @@ impl Form {
         while form.end() < LENGTH {
             let depth = form.shapes.len() as u64;
             let parts = 2 + (mix(seed, 7 + depth) % 3) as Time;
-            let mut frame = Form { seed, spans: vec![], shapes: vec![], grid: vec![1] };
+            let mut frame = Form { spans: vec![], shapes: vec![], grid: vec![1], ..form };
             frame.grow(parts);
             let mut shape = vec![];
             unfold(&Shape(mix(seed, 10 + depth)), &frame, (0, 0), (parts, 0), &mut shape);
@@ -135,20 +146,14 @@ impl Form {
         unit(mix(mix(self.idea(lo, depth), (t % self.spans[depth]) as u64), salt))
     }
 
-    /// A trait of the piece's character: a number between `low` and `high` that belongs to its seed.
-    pub fn temper(&self, salt: u64, low: f64, high: f64) -> f64 {
-        low + (high - low) * unit(mix(self.seed, salt))
-    }
-
     /// A swell that rises and falls through the piece, through each section and
     /// through each phrase: the shape of a breath, at three scales. Where it crests,
     /// how much the whole outweighs its parts, the level it rises from and how far
     /// it rises are the piece's own — a still piece and a stormy one differ only here.
     pub fn energy(&self, t: Time) -> f64 {
-        let (crest, whole) = (self.temper(5, 1.0, 2.0), self.temper(6, 0.4, 0.6));
-        let (tide, swell) = (self.temper(30, -0.6, 0.3), self.temper(31, 0.5, 1.1));
+        let (crest, whole) = (temper(self.seed, 5, 1.0, 2.0), temper(self.seed, 6, 0.4, 0.6));
         let arch = |span: &Time| (PI * ((t % span) as f64 / *span as f64).powf(crest)).sin();
         let shares = [whole, 0.6 * (1.0 - whole), 0.4 * (1.0 - whole)];
-        tide + swell * shares.iter().zip(&self.spans).map(|(share, span)| share * arch(span)).sum::<f64>()
+        self.tide + self.swell * shares.iter().zip(&self.spans).map(|(share, span)| share * arch(span)).sum::<f64>()
     }
 }

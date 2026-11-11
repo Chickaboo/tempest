@@ -43,7 +43,8 @@ fn main() -> io::Result<()> {
     let (form, bar) = (&piece.form, piece.form.bar());
     let shapes: Vec<String> = form.shapes.iter().map(|shape| letters(shape)).collect();
     let mut report = format!("Tempest No. {seed} — {} {mode}, {beats}/{unit}\n", name(piece.home));
-    report += &format!("  form {}, {} bars", shapes.join(" · "), form.end() / bar);
+    report += &format!("  form {}, {} bars\n", shapes.join(" · "), form.end() / bar);
+    report += &format!("  tide {:+.2}, swell {:.2}, caprice {:.2}", form.tide, form.swell, form.caprice);
     for (start, chord) in &piece.chords.0 {
         let lead = if start % form.spans[1] == 0 { "\n  " } else if start % bar == 0 { "  " } else { " " };
         report += &format!("{lead}{}{}", name(chord.root), chord.quality());

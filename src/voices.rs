@@ -74,7 +74,7 @@ impl Voice for Harmony<'_> {
         let weight = (form.stride(t) as f64 / form.spans[1] as f64).powi(2);
         let pull = |from, to, distance: Time| flow(from, to).powf((form.bar() as f64 / distance as f64).powi(2));
         let appeal = |x: i32| {
-            let whim = 0.5 + 0.5 * form.whim(lo, hi, t, 0x300 + x as u64);
+            let whim = 1.0 - 0.5 * form.caprice * (1.0 - form.whim(lo, hi, t, 0x300 + x as u64));
             let gravity = Self::GRAVITY.powf(fifths(x, centre) as f64 * weight);
             pull(a, x, t - lo).sqrt() * pull(x, b, hi - t) * gravity * if consonant(x) { whim } else { 0.3 * whim }
         };
@@ -124,7 +124,7 @@ impl Voice for Melody<'_> {
     fn lead(&self, (lo, a): Point<i32>, t: Time, (hi, b): Point<i32>) -> i32 {
         let (form, at) = (self.form, (lo, t, hi));
         let swell = form.energy(t) - between(form.energy(lo), form.energy(hi), at);
-        let stray = Self::WANDER * quarters(hi - lo).powf(0.25) * (2.0 * form.whim(lo, hi, t, 0x100) - 1.0);
+        let stray = Self::WANDER * form.caprice * quarters(hi - lo).powf(0.25) * (2.0 * form.whim(lo, hi, t, 0x100) - 1.0);
         let goal = between(a as f64, b as f64, at) + Self::LIFT * swell + stray;
         let home = self.register as f64 + Self::LIFT * form.energy(t).max(0.0);
         let cost = |x: i32| {
