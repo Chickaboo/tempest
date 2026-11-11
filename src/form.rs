@@ -5,11 +5,6 @@ use std::f64::consts::PI;
 /// Musical time, counted in eighth notes.
 pub type Time = i32;
 
-/// How an idea is built from smaller ones, from the whole piece down to the bar:
-/// statement, echo, contrast, return — at every scale but the last, where a
-/// two-bar phrase is simply a question and its answer.
-const SHAPES: [&[u64]; 3] = [&[0, 0, 1, 0], &[0, 0, 1, 0], &[0, 1]];
-
 /// SplitMix64: a stateless hash, and the piece's only source of chance.
 pub fn mix(seed: u64, salt: u64) -> u64 {
     let mut z = seed ^ salt.wrapping_add(1).wrapping_mul(0x9E37_79B9_7F4A_7C15);
@@ -25,8 +20,11 @@ pub fn unit(seed: u64) -> f64 {
 
 pub struct Form {
     pub seed: u64,
-    /// The length of an idea at each depth of the tree: piece, section, phrase, bar.
+    /// The length of an idea at each depth of the tree, from the piece down to the bar.
     pub spans: Vec<Time>,
+    /// How the ideas at each depth are built from smaller ones: which parts state
+    /// something (0), and which echo, contrast or return.
+    pub shapes: Vec<Vec<u64>>,
     /// Every metric unit, finest to coarsest: eighth, beat, …, bar, …, piece.
     grid: Vec<Time>,
 }
@@ -34,26 +32,30 @@ pub struct Form {
 impl Form {
     /// `meter` lists how a bar divides, coarsest first: `[2, 2, 2]` is 4/4, `[2, 3]` is 6/8.
     pub fn new(seed: u64, meter: &[Time]) -> Self {
-        let mut spans = vec![meter.iter().product::<Time>()];
-        for shape in SHAPES.iter().rev() {
-            spans.insert(0, spans[0] * shape.len() as Time);
+        let mut form = Form { seed, spans: vec![1], shapes: vec![], grid: vec![1] };
+        meter.iter().rev().for_each(|n| form.grow(*n));
+        form.spans = vec![form.end()];
+        for shape in [vec![0, 1], vec![0, 0, 1, 0], vec![0, 0, 1, 0]] {
+            form.grow(shape.len() as Time);
+            form.spans.insert(0, form.end());
+            form.shapes.insert(0, shape);
         }
-        let mut grid = vec![1];
-        for n in meter.iter().rev() {
-            grid.push(grid[grid.len() - 1] * n);
+        form
+    }
+
+    /// Gathers `n` of the longest unit so far into a longer one; four are two pairs.
+    fn grow(&mut self, n: Time) {
+        for n in if n == 4 { vec![2, 2] } else { vec![n] } {
+            self.grid.push(self.end() * n);
         }
-        while grid[grid.len() - 1] < spans[0] {
-            grid.push(grid[grid.len() - 1] * 2);
-        }
-        Form { seed, spans, grid }
     }
 
     pub fn bar(&self) -> Time {
-        self.spans[SHAPES.len()]
+        self.spans[self.shapes.len()]
     }
 
     pub fn end(&self) -> Time {
-        self.spans[0]
+        self.grid[self.grid.len() - 1]
     }
 
     /// How many levels of the metric hierarchy `t` is a downbeat of.
@@ -75,7 +77,7 @@ impl Form {
     /// The part its parent gives the idea sounding at `t`, `depth` levels down:
     /// 0 for a statement and all its returns, 1 for the contrast.
     pub fn role(&self, t: Time, depth: usize) -> u64 {
-        let shape = SHAPES[depth - 1];
+        let shape = &self.shapes[depth - 1];
         shape[(t / self.spans[depth]) as usize % shape.len()]
     }
 
