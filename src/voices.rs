@@ -2,7 +2,7 @@
 //! does this span move, and what leads from here to there?
 
 use crate::form::{mix, unit, Form, Time};
-use crate::tonal::{consonant, fifths, flow, relative, Chord, Chords};
+use crate::tonal::{consonant, fifths, flow, Chord, Chords};
 use crate::unfold::{tie, unfold, Point, Voice};
 
 /// A span of time in quarter notes, the scale on which the voices feel duration.
@@ -31,20 +31,25 @@ impl Harmony<'_> {
     const DENSITY: (f64, f64) = (0.0, 0.08);
     const GRAVITY: f64 = 0.3; // the appeal a chord keeps, per fifth from the centre, at the head of a section
 
-    /// The tonal centre of the section sounding at `t`: home, or for a contrast the relative key.
+    /// The tonal centre of the section sounding at `t`. A statement is at home; a
+    /// contrast settles on another consonant triad of the scale, one of its nearest keys.
     pub fn centre(&self, t: Time) -> i32 {
-        if self.form.role(t, 1) == 1 { relative(self.home) } else { self.home }
+        let away: Vec<i32> = (0..7).filter(|x| consonant(*x) && *x != self.home).collect();
+        match self.form.role(t, 1) {
+            0 => self.home,
+            _ => away[(self.form.idea(t, 1) % away.len() as u64) as usize],
+        }
     }
 
     /// The chords of the piece, unfolded from the tonic back to the tonic.
-    /// A chord arriving at the head of a phrase is led into by a true dominant.
+    /// A chord arriving at the head of more than a phrase is led into by a true dominant.
     pub fn chords(&self) -> Chords {
         let (form, mut roots) = (self.form, vec![]);
         unfold(self, form, (0, self.home), (form.end(), self.home), &mut roots);
         let mut roots = tie(roots, |t| t % form.bar() == 0);
         roots.push((form.end(), form.end() + form.bar(), self.home));
         let chord = |i: usize| match roots.get(i + 1) {
-            Some(&(t, _, next)) if form.stride(t) > 2 * form.bar() => Chord::leading_into(roots[i].2, next),
+            Some(&(t, _, next)) if form.stride(t) > form.spans[form.spans.len() - 2] => Chord::leading_into(roots[i].2, next),
             _ => Chord { root: roots[i].2, leading: false },
         };
         Chords((0..roots.len()).map(|i| (roots[i].0, chord(i))).collect())

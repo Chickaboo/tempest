@@ -172,5 +172,6 @@ mod tests {
         assert!(share(steps, steps + leaps) >= 0.5, "the melody should mostly move by step");
         assert!(share(centred, sections) >= 0.95, "sections should open on their tonal centre");
         assert!(share(crossings, accompaniment) < 0.02, "the left hand should stay under the melody");
+        assert!(lengths.len() >= 5, "pieces should differ in form");
     }
 }

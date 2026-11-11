@@ -1,5 +1,6 @@
 //! Time: a hierarchy of beats, a tree of ideas, and one curve of energy.
 
+use crate::unfold::{unfold, Point, Voice};
 use std::f64::consts::PI;
 
 /// Musical time, counted in eighth notes.
@@ -18,12 +19,31 @@ pub fn unit(seed: u64) -> f64 {
     (seed >> 11) as f64 / (1u64 << 53) as f64
 }
 
+/// The shape of an idea, unfolded like everything else. It opens with a statement
+/// and a statement follows it; each part between two others says something new —
+/// most likely where its neighbours are alike — or echoes one of them, more
+/// readily the one heard first.
+struct Shape(u64);
+
+impl Voice for Shape {
+    type Tone = u64;
+
+    fn moves(&self, _: Time, _: Time, _: u64) -> bool {
+        true
+    }
+
+    fn lead(&self, (_, a): Point<u64>, t: Time, (_, b): Point<u64>) -> u64 {
+        let (whim, fresh) = (unit(mix(self.0, t as u64)), if a == b { 0.8 } else { 0.2 });
+        if whim < fresh { t as u64 } else if whim < 0.75 + 0.25 * fresh { a.min(b) } else { a.max(b) }
+    }
+}
+
 pub struct Form {
     pub seed: u64,
     /// The length of an idea at each depth of the tree, from the piece down to the bar.
     pub spans: Vec<Time>,
-    /// How the ideas at each depth are built from smaller ones: which parts state
-    /// something (0), and which echo, contrast or return.
+    /// How the ideas at each depth are built from smaller ones: parts that share a
+    /// number share an identity, and 0 is the statement.
     pub shapes: Vec<Vec<u64>>,
     /// Every metric unit, finest to coarsest: eighth, beat, …, bar, …, piece.
     grid: Vec<Time>,
@@ -35,11 +55,20 @@ impl Form {
         let mut form = Form { seed, spans: vec![1], shapes: vec![], grid: vec![1] };
         meter.iter().rev().for_each(|n| form.grow(*n));
         form.spans = vec![form.end()];
-        for shape in [vec![0, 1], vec![0, 0, 1, 0], vec![0, 0, 1, 0]] {
-            form.grow(shape.len() as Time);
+        for depth in 0..3 {
+            let parts = 2 + (mix(seed, 7 + depth) % 3) as Time;
+            let mut frame = Form { seed, spans: vec![], shapes: vec![], grid: vec![1] };
+            frame.grow(parts);
+            let mut shape = vec![];
+            unfold(&Shape(mix(seed, 10 + depth)), &frame, (0, 0), (parts, 0), &mut shape);
+            form.grow(parts);
             form.spans.insert(0, form.end());
-            form.shapes.insert(0, shape);
+            form.shapes.insert(0, shape.iter().map(|part| part.2).collect());
         }
+        // Every idea is bound for a statement. For the piece itself it must be played.
+        form.shapes[0].push(0);
+        form.grid.push(form.end() + form.spans[1]);
+        form.spans[0] = form.end();
         form
     }
 
@@ -75,7 +104,7 @@ impl Form {
     }
 
     /// The part its parent gives the idea sounding at `t`, `depth` levels down:
-    /// 0 for a statement and all its returns, 1 for the contrast.
+    /// 0 for a statement and all its returns, anything else for a contrast.
     pub fn role(&self, t: Time, depth: usize) -> u64 {
         let shape = &self.shapes[depth - 1];
         shape[(t / self.spans[depth]) as usize % shape.len()]
