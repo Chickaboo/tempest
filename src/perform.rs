@@ -13,8 +13,8 @@ pub fn perform(piece: &Piece) -> Vec<Track> {
     let fermata = close * EIGHTH + 2 * TICKS_PER_QUARTER;
 
     let mut conductor = Track::named("Tempest");
-    let (beats, unit_note) = piece.meter.signature;
-    conductor.meta(0, 0x58, &[beats, unit_note.trailing_zeros() as u8, 24, 8]);
+    let (beats, unit_note) = form.signature();
+    conductor.meta(0, 0x58, &[beats as u8, unit_note.trailing_zeros() as u8, 24, 8]);
     for t in 0..close {
         conductor.tempo(t * EIGHTH, piece.pace / 2.0 * (0.82 + 0.26 * form.energy(t as i32)));
     }

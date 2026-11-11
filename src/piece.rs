@@ -5,20 +5,6 @@ use crate::tonal::{degree_near, Chords};
 use crate::unfold::{tie, unfold, Span};
 use crate::voices::{Bass, Harmony, Melody};
 
-/// A time signature, and how its bar divides down to the eighth note.
-pub struct Meter {
-    pub signature: (u8, u8),
-    pub divisions: &'static [Time],
-}
-
-const METERS: [Meter; 5] = [
-    Meter { signature: (4, 4), divisions: &[2, 2, 2] },
-    Meter { signature: (3, 4), divisions: &[3, 2] },
-    Meter { signature: (6, 8), divisions: &[2, 3] },
-    Meter { signature: (9, 8), divisions: &[3, 3] },
-    Meter { signature: (12, 8), divisions: &[2, 2, 3] },
-];
-
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Hand {
     Left,
@@ -35,7 +21,6 @@ pub struct Note {
 
 pub struct Piece {
     pub form: Form,
-    pub meter: &'static Meter,
     /// The pitch class of degree 0.
     pub key: i32,
     /// The tonal centre: degree 0 (major) or 5 (minor).
@@ -49,11 +34,10 @@ pub struct Piece {
 
 pub fn compose(seed: u64) -> Piece {
     let choose = |salt, n| (mix(seed, salt) % n) as usize;
-    let meter = &METERS[choose(1, METERS.len() as u64)];
     let (key, home) = (choose(2, 12) as i32, [0, 5][choose(3, 2)]);
     let pace = 112.0 + 48.0 * unit(mix(seed, 4));
 
-    let form = Form::new(seed, meter.divisions);
+    let form = Form::new(seed);
     let (bar, end) = (form.bar(), form.end());
     let close = end + bar;
 
@@ -79,7 +63,7 @@ pub fn compose(seed: u64) -> Piece {
     };
     let struck = |t: Time| chords.begins(t);
     let notes = tie(line, struck).iter().map(sing).chain(tie(figure, struck).iter().map(accompany)).collect();
-    Piece { form, meter, key, home, pace, chords, notes }
+    Piece { form, key, home, pace, chords, notes }
 }
 
 #[cfg(test)]

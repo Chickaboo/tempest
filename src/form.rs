@@ -6,7 +6,10 @@ use std::f64::consts::PI;
 /// Musical time, counted in eighth notes.
 pub type Time = i32;
 
-/// A piece gathers its bars into ideas, and those into larger ideas, until it lasts this long.
+/// Eighth notes gather into beats, and beats into longer beats, until one lasts this long: a bar.
+const BAR: Time = 6;
+
+/// Bars gather into ideas, and ideas into larger ideas, until one lasts this long: the piece.
 const LENGTH: Time = 150;
 
 /// SplitMix64: a stateless hash, and the piece's only source of chance.
@@ -53,10 +56,13 @@ pub struct Form {
 }
 
 impl Form {
-    /// `meter` lists how a bar divides, coarsest first: `[2, 2, 2]` is 4/4, `[2, 3]` is 6/8.
-    pub fn new(seed: u64, meter: &[Time]) -> Self {
-        let mut form = Form { seed, spans: vec![1], shapes: vec![], grid: vec![1] };
-        meter.iter().rev().for_each(|n| form.grow(*n));
+    /// One hierarchy of time, every level gathering a few of the level below:
+    /// eighths into beats and beats into a bar, then bars into ideas and ideas into the piece.
+    pub fn new(seed: u64) -> Self {
+        let mut form = Form { seed, spans: vec![], shapes: vec![], grid: vec![1] };
+        while form.end() < BAR {
+            form.grow(2 + (mix(seed, 20 + form.grid.len() as u64) % 2) as Time);
+        }
         form.spans = vec![form.end()];
         while form.end() < LENGTH {
             let depth = form.shapes.len() as u64;
@@ -85,6 +91,11 @@ impl Form {
 
     pub fn bar(&self) -> Time {
         self.spans[self.shapes.len()]
+    }
+
+    /// The time signature: eighths over 8 where the beat divides in three, quarters over 4 otherwise.
+    pub fn signature(&self) -> (Time, Time) {
+        if self.grid[1] == 3 { (self.bar(), 8) } else { (self.bar() / 2, 4) }
     }
 
     pub fn end(&self) -> Time {

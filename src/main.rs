@@ -38,7 +38,7 @@ fn main() -> io::Result<()> {
     midi::write(File::create(&path)?, perform::perform(&piece))?;
 
     let name = |degree: i32| NAMES[(piece.key + tonal::semitones(degree)).rem_euclid(12) as usize];
-    let (beats, unit) = piece.meter.signature;
+    let (beats, unit) = piece.form.signature();
     let mode = if piece.home == 0 { "major" } else { "minor" };
     let (form, bar) = (&piece.form, piece.form.bar());
     let shapes: Vec<String> = form.shapes.iter().map(|shape| letters(shape)).collect();
