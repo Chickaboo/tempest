@@ -85,7 +85,7 @@ pub fn compose(seed: u64) -> Piece {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tonal::relative;
+    use std::collections::HashSet;
 
     fn pieces() -> impl Iterator<Item = Piece> {
         (0..200).map(compose)
@@ -141,13 +141,17 @@ mod tests {
     /// Floors, not targets: what the music should keep doing however the algorithm changes.
     #[test]
     fn the_music_keeps_its_promises() {
-        let (mut cadences, mut steps, mut leaps, mut crossings, mut accompaniment, mut centred) = (0, 0, 0, 0, 0, 0);
+        let (mut cadences, mut steps, mut leaps, mut crossings, mut accompaniment) = (0, 0, 0, 0, 0);
+        let (mut centred, mut sections, mut lengths) = (0, 0, HashSet::new());
         for piece in pieces() {
+            let (form, harmony) = (&piece.form, Harmony { form: &piece.form, home: piece.home });
+            lengths.insert(form.end() / form.bar());
+            for start in (0..form.end()).step_by(form.spans[1] as usize) {
+                centred += (piece.chords.at(start).1.root == harmony.centre(start)) as usize;
+                sections += 1;
+            }
             let penultimate = piece.chords.at(piece.form.end() - 1).1;
             cadences += (penultimate.root == (piece.home + 4) % 7 && penultimate.quality().is_empty()) as usize;
-            let centres = [piece.home, piece.home, relative(piece.home), piece.home];
-            let opens = |section: usize| piece.chords.at(section as Time * piece.form.spans[1]).1.root == centres[section];
-            centred += (0..4).filter(|&section| opens(section)).count();
             let line = melody(&piece);
             for pair in line.windows(2) {
                 let step = (pair[1].pitch - pair[0].pitch).abs() <= 2;
@@ -162,10 +166,11 @@ mod tests {
             }
         }
         let share = |part: usize, whole: usize| part as f64 / whole as f64;
-        println!("cadences {:.3}  steps {:.3}  crossings {:.4}  centred {:.3}", share(cadences, 200), share(steps, steps + leaps), share(crossings, accompaniment), share(centred, 800));
+        let measured = (share(cadences, 200), share(steps, steps + leaps), share(crossings, accompaniment), share(centred, sections));
+        println!("cadences {:.3}  steps {:.3}  crossings {:.4}  centred {:.3}  lengths {}", measured.0, measured.1, measured.2, measured.3, lengths.len());
         assert!(share(cadences, 200) >= 0.9, "pieces should end dominant to tonic");
         assert!(share(steps, steps + leaps) >= 0.5, "the melody should mostly move by step");
-        assert!(share(centred, 800) >= 0.95, "sections should open on their tonal centre");
+        assert!(share(centred, sections) >= 0.95, "sections should open on their tonal centre");
         assert!(share(crossings, accompaniment) < 0.02, "the left hand should stay under the melody");
     }
 }

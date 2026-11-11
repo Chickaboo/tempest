@@ -31,6 +31,11 @@ impl Harmony<'_> {
     const DENSITY: (f64, f64) = (0.0, 0.08);
     const GRAVITY: f64 = 0.3; // the appeal a chord keeps, per fifth from the centre, at the head of a section
 
+    /// The tonal centre of the section sounding at `t`: home, or for a contrast the relative key.
+    pub fn centre(&self, t: Time) -> i32 {
+        if self.form.role(t, 1) == 1 { relative(self.home) } else { self.home }
+    }
+
     /// The chords of the piece, unfolded from the tonic back to the tonic.
     /// A chord arriving at the head of a phrase is led into by a true dominant.
     pub fn chords(&self) -> Chords {
@@ -57,11 +62,10 @@ impl Voice for Harmony<'_> {
 
     /// A chord is drawn along by its neighbours, the nearer the stronger, and by
     /// where it is going more than by where it has been. The longer the span it
-    /// opens, the harder it is pulled towards the centre of its section — the
-    /// contrasting section's being the relative key.
+    /// opens, the harder it is pulled towards the centre of its section.
     fn lead(&self, (lo, a): Point<i32>, t: Time, (hi, b): Point<i32>) -> i32 {
         let form = self.form;
-        let centre = if form.role(t, 1) == 1 { relative(self.home) } else { self.home };
+        let centre = self.centre(t);
         let weight = (form.stride(t) as f64 / form.spans[1] as f64).powi(2);
         let pull = |from, to, distance: Time| flow(from, to).powf((form.bar() as f64 / distance as f64).powi(2));
         let appeal = |x: i32| {
