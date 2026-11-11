@@ -162,10 +162,10 @@ impl Bass<'_> {
         unit(mix(mix(self.form.idea(t, 1), (t % self.form.bar()) as u64), salt))
     }
 
-    /// The chord sounding at `t`, and the degree of one of its rungs.
-    pub fn sound(&self, t: Time, rung: i32) -> (Chord, i32) {
+    /// The pitch of a rung of the chord sounding at `t`.
+    pub fn pitch(&self, t: Time, rung: i32) -> i32 {
         let chord = self.chords.at(t).1;
-        (chord, self.floor + (chord.root - self.floor).rem_euclid(7) + Self::LADDER[rung as usize])
+        chord.pitch(self.floor + (chord.root - self.floor).rem_euclid(7) + Self::LADDER[rung as usize])
     }
 }
 

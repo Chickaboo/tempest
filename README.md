@@ -14,7 +14,7 @@ cargo run --release -- 13 out.mid    # or choose where it goes
 cargo run --release                  # a new piece every time
 ```
 
-The same seed always gives the same piece. The command prints the key, the metre, the form it chose and the chords, so you can follow what you hear. The MIDI file has a track for each hand, with pedal, dynamics and rubato, and opens in any player or notation program.
+The same seed always gives the same piece. The command prints the key, the metre, the form and character it chose and the chords, so you can follow what you hear. The MIDI file has a track for each hand, with pedal, dynamics and rubato, and opens in any player or notation program.
 
 ## How it works
 
@@ -42,9 +42,13 @@ Which parts of an idea repeat is decided by the same unfolding. A part between t
 
 A single swell rises and falls across the piece, across each section and across each phrase. It decides how busy the music is, how quickly the chords change, how high the melody sits, and how loud and fast it is played. When an idea returns at higher energy it comes back with more notes in it. Where the swell crests is different for every seed, so each piece has its own arc.
 
+Each piece also has its own character, and it is only three numbers. Its tide is the level the energy rises from and its swell is how far it rises: a low, flat tide gives a still piece of long chords and single held notes, a high one a busy and loud one. Its caprice is how much chance is allowed to matter: a plain piece keeps to the strongest progressions and straight melodic lines, a capricious one wanders.
+
 ### Tension must resolve
 
 A melody note outside the chord is only allowed if it steps into the next note, and it cannot be decorated before it does. Passing notes and appoggiaturas come out of that one condition. Harmony follows the pull of falling fifths, strongest toward the chord it is about to reach, so cadences appear on their own. The longer the span a chord opens, the harder it is pulled toward the key's centre, so sections find their tonic without being told to.
+
+The left hand climbs the notes of each chord. When it holds still instead, it sounds at once the notes it would have climbed, so a long chord is an arpeggio that did not unfold.
 
 ## Project layout
 

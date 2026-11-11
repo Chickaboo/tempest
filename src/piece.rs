@@ -58,10 +58,7 @@ pub fn compose(seed: u64) -> Piece {
     figure.push((end, close, 0));
 
     let sing = |&(start, end, degree): &Span<i32>| Note { start, end, pitch: key + chords.at(start).1.pitch(degree), hand: Hand::Right };
-    let strike = |start, end, rung| {
-        let (chord, degree) = bass.sound(start, rung);
-        Note { start, end, pitch: key + chord.pitch(degree), hand: Hand::Left }
-    };
+    let strike = |start, end, rung| Note { start, end, pitch: key + bass.pitch(start, rung), hand: Hand::Left };
     let accompany = |&(start, end, rung): &Span<i32>| {
         let reach = (Bass::REACH * (end - start) as f64 / bar as f64) as i32;
         (rung..=(rung + reach).min(Bass::LADDER.len() as i32 - 1)).map(move |rung| strike(start, end, rung))

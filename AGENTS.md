@@ -18,7 +18,7 @@ Four ideas make it music:
 
 - Metre is the recursion tree. Time is one hierarchy from the eighth note to the piece, each level gathering a few of the level below; the seed chooses the divisions. `Form::cuts` splits a span at its strongest beat, so a tone's metric weight is its structural importance.
 - Identity is a seed. `Form::whim` is a hash of which idea a choice belongs to and where in it. Parts of an idea that echo each other share an identity, so a returning idea brings its choices back with it.
-- One curve of energy. `Form::energy` drives how readily spans divide in every voice, harmony included, how high the melody sits, and how loud and fast the piece is played. Its shape comes from the seed.
+- One curve of energy. `Form::energy` drives how readily spans divide in every voice, harmony included, how high the melody sits, and how loud and fast the piece is played. Its shape comes from the seed, and so does the piece's character: `tide` (the level energy rises from), `swell` (how far it rises) and `caprice` (how much chance matters against the pulls). A style is a point in those three numbers, never a preset.
 - Tension must resolve. A melody tone outside the chord is allowed only if it steps into the next tone, and it cannot be elaborated first.
 
 ## How to tell whether a change belongs
@@ -29,7 +29,7 @@ Ask these in order. A change that fails one needs a different design, not an exc
 - Is it one law for all voices? A case per voice, or a case per metre, is a sign the law is missing.
 - Does it add a table of patterns, a template, or a list of special situations? Then it does not belong. The only table of taste is `tonal::flow`, and it is labelled as one.
 - Does `unfold` stay as it is? It should.
-- Is the code smaller or the same size afterwards? Delete before adding. The composition code (`form`, `tonal`, `unfold`, `voices`, `compose`) is about 370 lines and should stay near that.
+- Is the code smaller or the same size afterwards? Delete before adding. The composition code (`form`, `tonal`, `unfold`, `voices`, `compose`) is about 375 lines and should stay near that.
 - Is the piece still a pure function of its seed? No random number generator, no clock, no state.
 - No dependencies.
 
@@ -60,6 +60,10 @@ These are known and deliberate for now. Do not bolt them on.
 - Gravity towards the centre must grow with the square of the span a chord opens. Linear growth collapsed the harmony into tonic and dominant.
 - The bar has to be between about six and twelve eighth notes. Shorter and motifs have no room; longer and one pedal blurs. `BAR` in `src/form.rs` sets it, the same way `LENGTH` sets the piece.
 - `Form::stride` must find the longest unit that begins at a moment by looking at every unit. The appended return makes the top of the grid uneven.
+
+- Character costs almost nothing if it goes through energy. A still piece and a stormy one differ only in tide and swell, because every voice already follows the curve. Do not add per-style behaviour; add or widen a trait.
+- A low tide must not lower the melody's register, or still pieces sink into the left hand.
+- Without chords, still pieces are bare two-part writing. A held accompaniment span sounds the rungs it had time to climb, which is the same figure not unfolded.
 
 ## House conventions
 
