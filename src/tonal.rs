@@ -3,6 +3,8 @@
 //! A tone is a scale degree counted from the bottom of the keyboard, seven to the octave.
 //! Major and minor are the same collection heard from a different centre (degree 0 or 5).
 
+use crate::form::Time;
+
 const SCALE: [i32; 7] = [0, 2, 4, 5, 7, 9, 11];
 
 /// Semitones from degree 0 up to `degree`.
@@ -72,5 +74,25 @@ impl Chord {
             (_, 7) => "m",
             _ => "°",
         }
+    }
+}
+
+/// The chords of a piece in order, each with the moment it begins.
+pub struct Chords(pub Vec<(Time, Chord)>);
+
+impl Chords {
+    /// The chord sounding at `t`, and when it began.
+    pub fn at(&self, t: Time) -> (Time, Chord) {
+        self.0[self.0.partition_point(|(start, _)| *start <= t) - 1]
+    }
+
+    /// Whether a chord begins at `t`.
+    pub fn begins(&self, t: Time) -> bool {
+        self.at(t).0 == t
+    }
+
+    /// Whether the harmony changes somewhere after `lo` and before `hi`.
+    pub fn changes(&self, lo: Time, hi: Time) -> bool {
+        self.at(hi - 1).0 > lo
     }
 }

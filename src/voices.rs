@@ -2,7 +2,7 @@
 //! does this span move, and what leads from here to there?
 
 use crate::form::{mix, unit, Form, Time};
-use crate::tonal::{consonant, fifths, flow, relative, Chord};
+use crate::tonal::{consonant, fifths, flow, relative, Chord, Chords};
 use crate::unfold::{unfold, Point, Voice};
 
 /// A span of time in quarter notes, the scale on which the voices feel duration.
@@ -20,7 +20,7 @@ fn between(from: f64, to: f64, (lo, t, hi): (Time, Time, Time)) -> f64 {
     from + (to - from) * (t - lo) as f64 / (hi - lo) as f64
 }
 
-/// The root of each bar's chord.
+/// The roots of the chords.
 pub struct Harmony<'a> {
     pub form: &'a Form,
     /// The tonal centre of the piece: degree 0 for major, 5 for minor.
@@ -32,7 +32,7 @@ impl Harmony<'_> {
 
     /// The chords of the piece, unfolded from the tonic back to the tonic.
     /// A chord arriving at the head of a phrase is led into by a true dominant.
-    pub fn chords(&self) -> Vec<Chord> {
+    pub fn chords(&self) -> Chords {
         let (form, mut roots) = (self.form, vec![]);
         unfold(self, form, (0, self.home), (form.end(), self.home), &mut roots);
         roots.push((form.end(), form.end() + form.bar(), self.home));
@@ -40,7 +40,7 @@ impl Harmony<'_> {
             Some(&(t, _, next)) if form.stride(t) > 2 * form.bar() => Chord::leading_into(roots[i].2, next),
             _ => Chord { root: roots[i].2, leading: false },
         };
-        (0..roots.len()).map(chord).collect()
+        Chords((0..roots.len()).map(|i| (roots[i].0, chord(i))).collect())
     }
 }
 
@@ -72,7 +72,7 @@ impl Voice for Harmony<'_> {
 /// The singing line, in scale degrees.
 pub struct Melody<'a> {
     pub form: &'a Form,
-    pub chords: &'a [Chord],
+    pub chords: &'a Chords,
     /// The degree the line calls home when the music is at rest.
     pub register: i32,
 }
@@ -85,13 +85,9 @@ impl Melody<'_> {
     const TENSION: f64 = 0.8; //               the cost of a dissonance, per quarter note it lasts
     const STALE: f64 = 0.4; //                 the cost of repeating a neighbouring tone
 
-    fn chord(&self, t: Time) -> Chord {
-        self.chords[(t / self.form.bar()) as usize]
-    }
-
     /// The first tone of the chord at `t` at or above the resting register — or, to close, its root.
     pub fn settle(&self, t: Time, close: bool) -> i32 {
-        let chord = self.chord(t);
+        let chord = self.chords.at(t).1;
         let fits = |x: &i32| if close { (x - chord.root).rem_euclid(7) == 0 } else { chord.contains(*x) };
         (self.register..).find(fits).unwrap()
     }
@@ -100,11 +96,12 @@ impl Melody<'_> {
 impl Voice for Melody<'_> {
     type Tone = i32;
 
-    /// A consonance may be elaborated; a dissonance is held until it resolves.
+    /// The line answers every change of harmony. Between changes a consonance may be
+    /// elaborated; a dissonance is held until it resolves.
     fn moves(&self, lo: Time, hi: Time, tone: i32) -> bool {
         let form = self.form;
         let stirs = || form.whim(lo, hi, lo, 0x100 + (hi - lo) as u64) < density(form, lo, hi, Self::DENSITY);
-        hi - lo > form.bar() || self.chord(lo).contains(tone) && stirs()
+        self.chords.changes(lo, hi) || self.chords.at(lo).1.contains(tone) && stirs()
     }
 
     /// The tone nearest a point on the path between its neighbours — a path that rises
@@ -117,7 +114,7 @@ impl Voice for Melody<'_> {
         let goal = between(a as f64, b as f64, at) + Self::LIFT * swell + stray;
         let home = self.register as f64 + Self::LIFT * form.energy(t);
         let cost = |x: i32| {
-            let tension = match (self.chord(t).contains(x), (x - b).abs()) {
+            let tension = match (self.chords.at(t).1.contains(x), (x - b).abs()) {
                 (true, _) => 0.0,
                 (false, 1) => Self::TENSION * quarters(hi - t),
                 (false, _) => f64::INFINITY,
@@ -134,7 +131,7 @@ impl Voice for Melody<'_> {
 /// series — wide at the bottom, close at the top.
 pub struct Bass<'a> {
     pub form: &'a Form,
-    pub chords: &'a [Chord],
+    pub chords: &'a Chords,
     /// The lowest degree a root may take.
     pub floor: i32,
 }
@@ -153,7 +150,7 @@ impl Bass<'_> {
 
     /// The chord sounding at `t`, and the degree of one of its rungs.
     pub fn sound(&self, t: Time, rung: i32) -> (Chord, i32) {
-        let chord = self.chords[(t / self.form.bar()) as usize];
+        let chord = self.chords.at(t).1;
         (chord, self.floor + (chord.root - self.floor).rem_euclid(7) + Self::LADDER[rung as usize])
     }
 }
@@ -162,13 +159,13 @@ impl Voice for Bass<'_> {
     type Tone = i32;
 
     fn moves(&self, lo: Time, hi: Time, _: i32) -> bool {
-        hi - lo > self.form.bar() || self.whim(lo, (hi - lo) as u64) < density(self.form, lo, hi, Self::DENSITY)
+        self.chords.changes(lo, hi) || self.whim(lo, (hi - lo) as u64) < density(self.form, lo, hi, Self::DENSITY)
     }
 
-    /// Every bar is founded on its root; between roots the figure arches upward.
+    /// Every chord is founded on its root; between roots the figure arches upward.
     fn lead(&self, (lo, a): Point<i32>, t: Time, (hi, b): Point<i32>) -> i32 {
         let bar = self.form.bar();
-        if t % bar == 0 {
+        if self.chords.begins(t) {
             return 0;
         }
         let climb = Self::REACH * ((hi - lo) as f64 / bar as f64).sqrt() * (0.4 + 0.6 * self.whim(t, 0));

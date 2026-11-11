@@ -28,10 +28,11 @@ fn main() -> io::Result<()> {
     let name = |degree: i32| NAMES[(piece.key + tonal::semitones(degree)).rem_euclid(12) as usize];
     let (beats, unit) = piece.meter.signature;
     let mode = if piece.home == 0 { "major" } else { "minor" };
-    let mut report = format!("Tempest No. {seed} — {} {mode}, {beats}/{unit}\n", name(piece.home));
-    for line in piece.chords.chunks(8) {
-        let bars = line.iter().map(|chord| format!("{:<5}", format!("{}{}", name(chord.root), chord.quality())));
-        report += &format!("  {}\n", bars.collect::<String>());
+    let mut report = format!("Tempest No. {seed} — {} {mode}, {beats}/{unit}", name(piece.home));
+    let bar = piece.form.bar();
+    for (start, chord) in &piece.chords.0 {
+        let lead = if start % (8 * bar) == 0 { "\n  " } else if start % bar == 0 { "  " } else { " " };
+        report += &format!("{lead}{}{}", name(chord.root), chord.quality());
     }
-    io::stdout().write_all(format!("{report}→ {path}\n").as_bytes())
+    io::stdout().write_all(format!("{report}\n→ {path}\n").as_bytes())
 }

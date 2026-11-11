@@ -39,12 +39,12 @@ pub fn unfold<V: Voice>(voice: &V, form: &Form, from: Point<V::Tone>, to: Point<
     }
 }
 
-/// Joins a tone to its repetition, except across a barline, where it is struck again.
-pub fn tie<T: PartialEq>(spans: Vec<Span<T>>, bar: Time) -> Vec<Span<T>> {
+/// Joins a tone to its repetition, except where it is `struck` again.
+pub fn tie<T: PartialEq>(spans: Vec<Span<T>>, struck: impl Fn(Time) -> bool) -> Vec<Span<T>> {
     let mut tied: Vec<Span<T>> = Vec::with_capacity(spans.len());
     for span in spans {
         match tied.last_mut() {
-            Some(last) if last.2 == span.2 && span.0 % bar != 0 => last.1 = span.1,
+            Some(last) if last.2 == span.2 && !struck(span.0) => last.1 = span.1,
             _ => tied.push(span),
         }
     }

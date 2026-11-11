@@ -1,7 +1,7 @@
 //! A piece: one seed, unfolded three times.
 
 use crate::form::{mix, unit, Form, Time};
-use crate::tonal::{degree_near, Chord};
+use crate::tonal::{degree_near, Chords};
 use crate::unfold::{tie, unfold, Span};
 use crate::voices::{Bass, Harmony, Melody};
 
@@ -42,8 +42,8 @@ pub struct Piece {
     pub home: i32,
     /// Eighth notes per minute, before rubato.
     pub pace: f64,
-    /// One chord per bar, the last being the final tonic.
-    pub chords: Vec<Chord>,
+    /// The harmony, the last chord being the final tonic.
+    pub chords: Chords,
     pub notes: Vec<Note>,
 }
 
@@ -58,7 +58,6 @@ pub fn compose(seed: u64) -> Piece {
     let close = end + bar;
 
     let chords = Harmony { form: &form, home }.chords();
-    let chord = |t: Time| chords[(t / bar) as usize];
 
     // Melody: from a tone of the first chord to the root of the last.
     let melody = Melody { form: &form, chords: &chords, register: degree_near(67 - key) };
@@ -73,12 +72,13 @@ pub fn compose(seed: u64) -> Piece {
     unfold(&bass, &form, (0, 0), (end, 0), &mut figure);
     figure.extend((0..Bass::LADDER.len() as i32).map(|rung| (end, close, rung)));
 
-    let sing = |&(start, end, degree): &Span<i32>| Note { start, end, pitch: key + chord(start).pitch(degree), hand: Hand::Right };
+    let sing = |&(start, end, degree): &Span<i32>| Note { start, end, pitch: key + chords.at(start).1.pitch(degree), hand: Hand::Right };
     let accompany = |&(start, end, rung): &Span<i32>| {
         let (chord, degree) = bass.sound(start, rung);
         Note { start, end, pitch: key + chord.pitch(degree), hand: Hand::Left }
     };
-    let notes = tie(line, bar).iter().map(sing).chain(tie(figure, bar).iter().map(accompany)).collect();
+    let struck = |t: Time| chords.begins(t);
+    let notes = tie(line, struck).iter().map(sing).chain(tie(figure, struck).iter().map(accompany)).collect();
     Piece { form, meter, key, home, pace, chords, notes }
 }
 
@@ -96,7 +96,7 @@ mod tests {
     }
 
     fn consonant(piece: &Piece, note: &Note) -> bool {
-        let chord = piece.chords[(note.start / piece.form.bar()) as usize];
+        let chord = piece.chords.at(note.start).1;
         (0..3).any(|i| (piece.key + chord.pitch(chord.root + 2 * i) - note.pitch) % 12 == 0)
     }
 
@@ -117,12 +117,11 @@ mod tests {
     }
 
     #[test]
-    fn every_bar_is_founded_on_its_root() {
+    fn every_chord_is_founded_on_its_root() {
         for piece in pieces() {
-            let bar = piece.form.bar();
-            for (i, chord) in piece.chords.iter().enumerate() {
-                let downbeat = |note: &&Note| note.hand == Hand::Left && note.start == i as Time * bar;
-                let lowest = piece.notes.iter().filter(downbeat).map(|note| note.pitch).min().unwrap();
+            for &(start, chord) in &piece.chords.0 {
+                let sounded = |note: &&Note| note.hand == Hand::Left && note.start == start;
+                let lowest = piece.notes.iter().filter(sounded).map(|note| note.pitch).min().unwrap();
                 assert_eq!((lowest - piece.key - chord.pitch(chord.root)) % 12, 0);
             }
         }
@@ -131,7 +130,7 @@ mod tests {
     #[test]
     fn every_piece_comes_home() {
         for piece in pieces() {
-            let (first, last) = (piece.chords[0], piece.chords[piece.chords.len() - 1]);
+            let (first, last) = (piece.chords.at(0).1, piece.chords.at(piece.form.end()).1);
             assert!(first == last && last.root == piece.home);
             let close = melody(&piece).pop().unwrap();
             assert_eq!((close.pitch - piece.key - last.pitch(last.root)) % 12, 0);
@@ -144,9 +143,10 @@ mod tests {
     fn the_music_keeps_its_promises() {
         let (mut cadences, mut steps, mut leaps, mut crossings, mut accompaniment, mut centred) = (0, 0, 0, 0, 0, 0);
         for piece in pieces() {
-            let penultimate = piece.chords[piece.chords.len() - 2];
+            let penultimate = piece.chords.at(piece.form.end() - 1).1;
             cadences += (penultimate.root == (piece.home + 4) % 7 && penultimate.quality().is_empty()) as usize;
-            let opens = |section: usize| piece.chords[8 * section].root == [piece.home, piece.home, relative(piece.home), piece.home][section];
+            let centres = [piece.home, piece.home, relative(piece.home), piece.home];
+            let opens = |section: usize| piece.chords.at(section as Time * piece.form.spans[1]).1.root == centres[section];
             centred += (0..4).filter(|&section| opens(section)).count();
             let line = melody(&piece);
             for pair in line.windows(2) {

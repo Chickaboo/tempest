@@ -35,9 +35,9 @@ pub fn perform(piece: &Piece) -> Vec<Track> {
     }
 
     // The pedal is changed with every chord, and held under the last.
-    for bar in (0..close).step_by(form.bar() as usize) {
-        left.pedal(bar * EIGHTH, false);
-        left.pedal(bar * EIGHTH + 24, true);
+    for &(start, _) in &piece.chords.0 {
+        left.pedal(start as u32 * EIGHTH, false);
+        left.pedal(start as u32 * EIGHTH + 24, true);
     }
     left.pedal(fermata, false);
     vec![conductor, right, left]
