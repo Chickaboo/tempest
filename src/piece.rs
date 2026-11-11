@@ -50,19 +50,24 @@ pub fn compose(seed: u64) -> Piece {
     unfold(&melody, &form, (0, first), (end, last), &mut line);
     line.push((end, close, last));
 
-    // Accompaniment: from root to root, where the whole ladder is left to ring.
+    // Accompaniment: from root to root. A span that is held sounds, at once, the
+    // rungs it had time to climb: a long chord is an arpeggio that did not unfold.
     let bass = Bass { form: &form, chords: &chords, floor: degree_near(34 - key) };
     let mut figure = vec![];
     unfold(&bass, &form, (0, 0), (end, 0), &mut figure);
-    figure.extend((0..Bass::LADDER.len() as i32).map(|rung| (end, close, rung)));
+    figure.push((end, close, 0));
 
     let sing = |&(start, end, degree): &Span<i32>| Note { start, end, pitch: key + chords.at(start).1.pitch(degree), hand: Hand::Right };
-    let accompany = |&(start, end, rung): &Span<i32>| {
+    let strike = |start, end, rung| {
         let (chord, degree) = bass.sound(start, rung);
         Note { start, end, pitch: key + chord.pitch(degree), hand: Hand::Left }
     };
+    let accompany = |&(start, end, rung): &Span<i32>| {
+        let reach = (Bass::REACH * (end - start) as f64 / bar as f64) as i32;
+        (rung..=(rung + reach).min(Bass::LADDER.len() as i32 - 1)).map(move |rung| strike(start, end, rung))
+    };
     let struck = |t: Time| chords.begins(t);
-    let notes = tie(line, struck).iter().map(sing).chain(tie(figure, struck).iter().map(accompany)).collect();
+    let notes = tie(line, struck).iter().map(sing).chain(tie(figure, struck).iter().flat_map(accompany)).collect();
     Piece { form, key, home, pace, chords, notes }
 }
 

@@ -153,7 +153,7 @@ pub struct Bass<'a> {
 impl Bass<'_> {
     pub const LADDER: [i32; 5] = [0, 4, 9, 11, 14]; // root, fifth, tenth, twelfth, fifteenth
     const DENSITY: (f64, f64) = (0.3, 0.8);
-    const REACH: f64 = 2.6; // how many rungs the figure climbs in half a bar
+    pub const REACH: f64 = 2.6; // how many rungs the figure climbs in half a bar, or a held bar sounds at once
     const STALE: f64 = 0.8; // the cost of repeating a neighbouring rung
 
     /// A whim that belongs to the section and to a place in the bar, so that every
