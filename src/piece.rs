@@ -147,4 +147,31 @@ mod tests {
             assert!(piece.notes.iter().all(|note| (21..=108).contains(&note.pitch) && note.start < note.end));
         }
     }
+
+    /// Floors, not targets: what the music should keep doing however the algorithm changes.
+    #[test]
+    fn the_music_keeps_its_promises() {
+        let (mut cadences, mut steps, mut leaps, mut crossings, mut accompaniment) = (0, 0, 0, 0, 0);
+        for piece in pieces() {
+            let penultimate = piece.chords[piece.chords.len() - 2];
+            cadences += (penultimate.root == (piece.home + 4) % 7 && penultimate.quality().is_empty()) as usize;
+            let line = melody(&piece);
+            for pair in line.windows(2) {
+                let step = (pair[1].pitch - pair[0].pitch).abs() <= 2;
+                steps += step as usize;
+                leaps += !step as usize;
+            }
+            assert!(line.iter().all(|note| (55..=96).contains(&note.pitch)), "seed {} leaves its register", piece.form.seed);
+            for low in piece.notes.iter().filter(|note| note.hand == Hand::Left) {
+                let under = |high: &&Note| high.start <= low.start && low.start < high.end && high.pitch <= low.pitch;
+                crossings += line.iter().any(under) as usize;
+                accompaniment += 1;
+            }
+        }
+        let share = |part: usize, whole: usize| part as f64 / whole as f64;
+        println!("cadences {:.3}  steps {:.3}  crossings {:.4}", share(cadences, 200), share(steps, steps + leaps), share(crossings, accompaniment));
+        assert!(share(cadences, 200) >= 0.9, "pieces should end dominant to tonic");
+        assert!(share(steps, steps + leaps) >= 0.5, "the melody should mostly move by step");
+        assert!(share(crossings, accompaniment) < 0.02, "the left hand should stay under the melody");
+    }
 }
